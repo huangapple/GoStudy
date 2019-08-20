@@ -54,6 +54,8 @@ func writeFile() {
 	isFinish = true
 	file.Close()
 }
+
+//文件边被写， 边被下载
 func download1(w http.ResponseWriter, r *http.Request) {
 
 	file, err := os.Open(filepath)
