@@ -6,6 +6,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/huangapple/captcha v0.0.0-20190807073204-741b0b224e99 // indirect
 	github.com/ryho/excel_stream v0.0.0-20170724163223-042a6ab38330 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/tealeg/xlsx v1.0.3 // indirect
