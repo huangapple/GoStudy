@@ -60,7 +60,6 @@ func download1(w http.ResponseWriter, r *http.Request) {
 
 	file, err := os.Open(filepath)
 
-	http.MethodGet
 	if err != nil {
 		panic(err)
 	}
