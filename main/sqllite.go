@@ -17,15 +17,15 @@ var mongoDBName = "adoc"
 var code2nameMap map[string]string
 
 type Info struct {
-	Name string `json:"name"`
-	Code string `json:"code"`
+	Name string `json:"name" bson:"name" db:"name"`
+	Code string `json:"code" bson:"code" db:"code"`
 }
 type ADOCInfo struct {
 	Info
-	StreetCode   string `json:"streetCode,omitempty" bson:"streetCode,omitempty"`
-	ProvinceCode string `json:"provinceCode,omitempty" bson:"provinceCode,omitempty"`
-	CityCode     string `json:"cityCode,omitempty" bson:"cityCode,omitempty"`
-	AreaCode     string `json:"areaCode,omitempty" bson:"areaCode,omitempty"`
+	StreetCode   string `db:"streetCode" json:"streetCode,omitempty" bson:"streetCode,omitempty"`
+	ProvinceCode string `db:"provinceCode" json:"provinceCode,omitempty" bson:"provinceCode,omitempty"`
+	CityCode     string `db:"cityCode" json:"cityCode,omitempty" bson:"cityCode,omitempty"`
+	AreaCode     string `db:"areaCode" json:"areaCode,omitempty" bson:"areaCode,omitempty"`
 }
 
 func (info *ADOCInfo) GetInfo() *Info {
