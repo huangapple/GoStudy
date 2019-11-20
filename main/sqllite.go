@@ -7,6 +7,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"io/ioutil"
 	"os"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var mongoDBName = "adoc"
@@ -19,10 +22,10 @@ type Info struct {
 }
 type ADOCInfo struct {
 	Info
-	StreetCode   string `json:"streetCode,omitempty"`
-	ProvinceCode string `json:"provinceCode,omitempty"`
-	CityCode     string `json:"cityCode,omitempty"`
-	AreaCode     string `json:"areaCode,omitempty"`
+	StreetCode   string `json:"streetCode,omitempty" bson:"streetCode,omitempty"`
+	ProvinceCode string `json:"provinceCode,omitempty" bson:"provinceCode,omitempty"`
+	CityCode     string `json:"cityCode,omitempty" bson:"cityCode,omitempty"`
+	AreaCode     string `json:"areaCode,omitempty" bson:"areaCode,omitempty"`
 }
 
 func (info *ADOCInfo) GetInfo() *Info {
@@ -55,13 +58,13 @@ func (info *ADOCInfo) GetStreet() *Info {
 }
 
 type MongoADOC struct {
-	ID           string `json:"_id"`
-	Type         string `json:"type"`
-	ProvinceInfo *Info  `json:"provinceInfo,omitempty"`
-	VillageInfo  *Info  `json:"villageInfo,omitempty"`
-	StreetInfo   *Info  `json:"streetInfo,omitempty"`
-	DistrictInfo *Info  `json:"districtInfo,omitempty"`
-	CityInfo     *Info  `json:"cityInfo,omitempty"`
+	ID           string `json:"_id" bson:"_id"`
+	Type         string `json:"type" bson:"type"`
+	ProvinceInfo *Info  `json:"provinceInfo,omitempty" bson:"provinceInfo,omitempty"`
+	VillageInfo  *Info  `json:"villageInfo,omitempty" bson:"villageInfo,omitempty"`
+	StreetInfo   *Info  `json:"streetInfo,omitempty" bson:"streetInfo,omitempty"`
+	DistrictInfo *Info  `json:"districtInfo,omitempty" bson:"districtInfo,omitempty"`
+	CityInfo     *Info  `json:"cityInfo,omitempty" bson:"cityInfo,omitempty"`
 }
 
 func GetJsonStr(i interface{}) string {
@@ -97,136 +100,155 @@ func main() {
 	code2nameMap = make(map[string]string)
 	db, err := sqlx.Connect("sqlite3", "./data.sqlite")
 
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://mongodb:27017"))
+
+	checkErr(err)
+
+	err = client.Connect(nil)
+	checkErr(err)
+	mgo := client.Database("information").Collection(mongoDBName)
 	checkErr(err)
 	defer db.Close()
 
 	//导出省
-	exportProvince(db)
+	exportProvince(db, mgo)
 	//导出市
-	exportCity(db)
+	exportCity(db, mgo)
 	//导出区
-	exportDistrict(db)
+	exportDistrict(db, mgo)
 	//导出街道
-	exportStreet(db)
+	exportStreet(db, mgo)
 	//导出村庄
-	exportVillage(db)
+	exportVillage(db, mgo)
 
 	fmt.Println("全部完成")
 }
 
 //导出省份
-func exportProvince(db *sqlx.DB) {
+func exportProvince(db *sqlx.DB, mgo *mongo.Collection) {
 
 	list := make([]*ADOCInfo, 0)
 
 	err := db.Unsafe().Select(&list, "select * from province")
 	checkErr(err)
 
-	adocList := make([]*MongoADOC, 0, len(list))
+	//adocList := make([]*MongoADOC, 0, len(list))
 	for _, info := range list {
 
-		adocList = append(adocList, &MongoADOC{
+		mongoADOC := &MongoADOC{
 			ID:           info.Code,
 			Type:         "province",
 			ProvinceInfo: info.GetInfo(),
-		})
+		}
 
 		code2nameMap[info.Code] = info.Name
+
+		result, err := mgo.InsertOne(nil, mongoADOC)
+		checkErr(err)
+		fmt.Println(GetJsonStr(result))
 	}
 
-	txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
-
-	exportFile("province.mongo", txt)
+	//txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
+	//exportFile("province.mongo", txt)
 }
 
 //导出市
-func exportCity(db *sqlx.DB) {
+func exportCity(db *sqlx.DB, mgo *mongo.Collection) {
 
 	list := make([]*ADOCInfo, 0)
 
 	err := db.Unsafe().Select(&list, "select * from city")
 	checkErr(err)
 
-	adocList := make([]*MongoADOC, 0, len(list))
+	//adocList := make([]*MongoADOC, 0, len(list))
 	for _, info := range list {
 
-		adocList = append(adocList, &MongoADOC{
+		mongoADOC := &MongoADOC{
 			ID:           info.Code,
 			Type:         "city",
 			ProvinceInfo: info.GetProvince(),
 			CityInfo:     info.GetInfo(),
-		})
+		}
 
 		code2nameMap[info.Code] = info.Name
+		result, err := mgo.InsertOne(nil, mongoADOC)
+		checkErr(err)
+		fmt.Println(GetJsonStr(result))
 	}
 
-	txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
-	exportFile("city.mongo", txt)
+	//txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
+	//exportFile("city.mongo", txt)
 }
 
 //导出区
-func exportDistrict(db *sqlx.DB) {
+func exportDistrict(db *sqlx.DB, mgo *mongo.Collection) {
 
 	list := make([]*ADOCInfo, 0)
 
 	err := db.Unsafe().Select(&list, "select * from area")
 	checkErr(err)
 
-	adocList := make([]*MongoADOC, 0, len(list))
+	//adocList := make([]*MongoADOC, 0, len(list))
 	for _, info := range list {
 
-		adocList = append(adocList, &MongoADOC{
+		mongoADOC := &MongoADOC{
 			ID:           info.Code,
 			Type:         "district",
 			ProvinceInfo: info.GetProvince(),
 			CityInfo:     info.GetCity(),
 			DistrictInfo: info.GetInfo(),
-		})
+		}
 
 		code2nameMap[info.Code] = info.Name
+		result, err := mgo.InsertOne(nil, mongoADOC)
+		checkErr(err)
+		fmt.Println(GetJsonStr(result))
 	}
-	txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
-	exportFile("district.mongo", txt)
+	//txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
+	//exportFile("district.mongo", txt)
 }
 
 //导出街道
-func exportStreet(db *sqlx.DB) {
+func exportStreet(db *sqlx.DB, mgo *mongo.Collection) {
 
 	list := make([]*ADOCInfo, 0)
 
 	err := db.Unsafe().Select(&list, "select * from street")
 	checkErr(err)
 
-	adocList := make([]*MongoADOC, 0, len(list))
+	//adocList := make([]*MongoADOC, 0, len(list))
 	for _, info := range list {
 
-		adocList = append(adocList, &MongoADOC{
+		mongoADOC := &MongoADOC{
 			ID:           info.Code,
 			Type:         "street",
 			ProvinceInfo: info.GetProvince(),
 			CityInfo:     info.GetCity(),
 			DistrictInfo: info.GetArea(),
 			StreetInfo:   info.GetInfo(),
-		})
+		}
 
 		code2nameMap[info.Code] = info.Name
+		result, err := mgo.InsertOne(nil, mongoADOC)
+		checkErr(err)
+		fmt.Println(GetJsonStr(result))
 	}
-	txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
-	exportFile("street.mongo", txt)
+	//txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
+	//exportFile("street.mongo", txt)
 }
 
 //导出村庄
-func exportVillage(db *sqlx.DB) {
+func exportVillage(db *sqlx.DB, mgo *mongo.Collection) {
 
 	list := make([]*ADOCInfo, 0)
 
 	err := db.Unsafe().Select(&list, "select * from village")
 	checkErr(err)
 
-	adocList := make([]*MongoADOC, 0, len(list))
+	//adocList := make([]*MongoADOC, 0, len(list))
 	for _, info := range list {
 
-		adocList = append(adocList, &MongoADOC{
+		mongoADOC := &MongoADOC{
 			ID:           info.Code,
 			Type:         "village",
 			ProvinceInfo: info.GetProvince(),
@@ -234,10 +256,13 @@ func exportVillage(db *sqlx.DB) {
 			DistrictInfo: info.GetArea(),
 			StreetInfo:   info.GetStreet(),
 			VillageInfo:  info.GetInfo(),
-		})
+		}
 
 		code2nameMap[info.Code] = info.Name
+		result, err := mgo.InsertOne(nil, mongoADOC)
+		checkErr(err)
+		fmt.Println(GetJsonStr(result))
 	}
-	txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
-	exportFile("village.mongo", txt)
+	//txt := fmt.Sprintf("db.%s.insertMany(%s)\n", mongoDBName, GetJsonStr(adocList))
+	//exportFile("village.mongo", txt)
 }
